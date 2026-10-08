@@ -9,10 +9,10 @@ if (!url) {
   throw new Error("DATABASE_URL is not configured.");
 }
 
-const client = postgres(url, {
+export const primaryClient = postgres(url, {
   max: 10,
   idle_timeout: 20,
   connect_timeout: 10,
 });
 
-export const primaryDb = drizzle(client);
+export const primaryDb = drizzle(primaryClient);

@@ -1,4 +1,4 @@
-export type TenantDatabaseStatus = "active" | "disabled";
+export type TenantDatabaseStatus = "active" | "provisioning" | "failed" | "disabled";
 
 export type TenantDatabaseRole = "primary" | "replica";
 

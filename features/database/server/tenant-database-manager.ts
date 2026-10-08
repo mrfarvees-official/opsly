@@ -1,12 +1,20 @@
 import "server-only";
+
 import { DatabaseManager } from "../application/database-manager";
+
 import type { TenantDatabaseResolver } from "../application/tenant-database-resolver";
+
 import {
   PostgresProvider,
   type PostgresDatabase,
 } from "../infrastructure/postgres/postgres-provider";
+
 import type { DatabaseConnectionConfig } from "../domain/database-connection";
+
+import type { TenantDatabase } from "../domain/tenant-database";
+
 import { PrimaryTenantDatabaseResolver } from "./tenant-database-resolver";
+
 import { buildPostgresConnectionUrl } from "../infrastructure/postgres/postgres-connection-url";
 
 export class TenantDatabaseManager {
@@ -19,6 +27,10 @@ export class TenantDatabaseManager {
   async get(tenantId: string): Promise<PostgresDatabase> {
     const tenantDatabase = await this.resolver.resolve(tenantId);
 
+    return this.register(tenantDatabase);
+  }
+
+  async register(tenantDatabase: TenantDatabase): Promise<PostgresDatabase> {
     const connectionConfig: DatabaseConnectionConfig = {
       id: tenantDatabase.id,
       url: buildPostgresConnectionUrl(tenantDatabase),
