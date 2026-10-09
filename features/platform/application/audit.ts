@@ -24,13 +24,14 @@ interface Actor {
 /** No-op for view and viewAny. Pass a transaction to commit atomically with the change. */
 export async function writeAudit(sql: Sql, actor: Actor, e: AuditEntry) {
   if (!isLogged(e.action)) return;
+  const details = e.details ? JSON.stringify(e.details) : null;
   await sql`
     insert into audit_log
       (actor_id, actor_email, resource, action, resource_id, outcome, details, ip, user_agent)
     values (
       ${actor.userId}, ${actor.email}, ${e.resource}, ${e.action},
       ${e.resourceId ?? null}, ${e.outcome},
-      ${e.details ? sql.json(e.details as never) : null},
+      ${details}::jsonb,
       ${actor.ip}, ${actor.userAgent}
     )`;
 }

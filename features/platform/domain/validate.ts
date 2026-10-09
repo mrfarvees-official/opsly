@@ -63,7 +63,7 @@ export function oneOf<T extends string>(
   return v as T;
 }
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}[0-9a-f]{4}[0-9a-f]{4}[0-9a-f]{12}$/i;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export function uuid(v: unknown, field: string): string {
   if (typeof v !== "string" || !UUID.test(v))
     throw badRequest(`${field} is invalid.`);
@@ -80,6 +80,6 @@ export function list(v: unknown, field: string, max = 50): unknown[] {
 
 export function email(v: unknown): string {
     const e = text(v, "Email", { max: 254 }).toLocaleLowerCase();
-    if (!/^[^@\s]+@[^@\s]\.[^@\s]+$/.test(e)) throw badRequest("Email is invalid.");
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) throw badRequest("Email is invalid.");
     return e;
 }

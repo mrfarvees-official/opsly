@@ -72,7 +72,7 @@ export default function Home() {
           </Link>
           <Link
             href="/signup"
-            className="rounded-lg bg-ink px-4 py-2 text-white hover:bg-brand"
+            className="rounded-lg border border-line bg-card px-4 py-2 text-ink hover:border-brand hover:text-brand"
           >
             Create workspace
           </Link>
@@ -158,16 +158,16 @@ export default function Home() {
         </section>
 
         <section id="pricing" className="mx-auto max-w-6xl px-6 py-20">
-          <div className="rounded-3xl bg-ink px-8 py-14 text-white sm:px-14">
+          <div className="rounded-3xl border border-brand/20 bg-brand-tint px-8 py-14 text-ink sm:px-14">
             <h2 className="max-w-xl font-display text-4xl font-bold leading-tight">
               Set up your team's workspace in two minutes.
             </h2>
-            <p className="mt-4 max-w-md text-white/70">
+            <p className="mt-4 max-w-md text-ink-soft">
               Name it, pick a web address, invite your team.
             </p>
             <Link
               href="/signup"
-              className="mt-8 inline-block rounded-lg bg-white px-6 py-3 font-semibold text-ink hover:bg-brand-tint"
+              className="mt-8 inline-block rounded-lg bg-brand px-6 py-3 font-semibold text-white hover:bg-brand-dark"
             >
               Create workspace
             </Link>

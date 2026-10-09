@@ -9,6 +9,7 @@ import { getTenantSql } from "../infrastructure/tenant-sql";
 import { authorize } from "./authorize";
 import { writeAudit } from "./audit";
 import { getContext, type RequestContext } from "./context";
+import { getTenantRole } from "./tenant-role-membership";
 
 export interface RunSpec {
   resource: string;
@@ -42,7 +43,11 @@ export async function run<T>(
     select m.team_id from team_member m
     join team t on t.id = m.team_id
     where m.user_id = ${base.userId} and t.deleted_at is null`;
-  const ctx: RequestContext = { ...base, teamIds: teams.map((t) => t.team_id) };
+  const ctx: RequestContext = {
+    ...base,
+    role: await getTenantRole(sql, base.userId, base.role),
+    teamIds: teams.map((t) => t.team_id),
+  };
 
   const logged = isLogged(spec.action);
   const audit = {

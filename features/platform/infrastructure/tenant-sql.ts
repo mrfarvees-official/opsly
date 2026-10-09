@@ -285,6 +285,19 @@ async function seedSystemPolicies(sql: SqlExecutor) {
   await seedDefaultPolicies(sql);
 }
 
+async function seedTenantRoles(sql: SqlExecutor) {
+  for (const role of [
+    { key: "owner", name: "Workspace owner" },
+    { key: "admin", name: "Administrator" },
+    { key: "member", name: "Member" },
+  ]) {
+    await sql`
+      insert into workspace_role (key, name, system)
+      values (${role.key}, ${role.name}, true)
+      on conflict (key) do update set name = excluded.name, system = true`;
+  }
+}
+
 /**
  * Creates the business tables in one tenant database, then seeds the
  * permission catalog and PBAC policies. The bootstrap transaction is guarded
@@ -300,6 +313,7 @@ export async function initializeTenantSchema(client: Sql): Promise<void> {
     await tx.unsafe(DDL);
     await applyMigrations(tx);
     await seedCatalog(tx);
+    await seedTenantRoles(tx);
     await seedSystemPolicies(tx);
     await seedDefaultPolicies(tx);
     await tx`

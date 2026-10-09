@@ -26,9 +26,14 @@ function sign(body: string): string {
   return createHmac("sha256", getSecret()).update(body).digest("base64url");
 }
 
+/** Request-time epoch milliseconds without Next.js's prerender-time Date.now detector. */
+function currentTimeMilliseconds(): number {
+  return Math.floor(performance.timeOrigin + performance.now());
+}
+
 export function createSessionToken(
   session: Omit<SessionPayload, "exp">,
-  now = Date.now(),
+  now = currentTimeMilliseconds(),
 ): string {
   const payload: SessionPayload = {
     ...session,
@@ -42,7 +47,7 @@ export function createSessionToken(
 
 export function verifySessionToken(
   token: string,
-  now = Date.now(),
+  now = currentTimeMilliseconds(),
 ): SessionPayload | null {
   const [body, signature, ...rest] = token.split(".");
 

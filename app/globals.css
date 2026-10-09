@@ -24,6 +24,41 @@ body {
   font-family: var(--font-figtree), system-ui, sans-serif;
 }
 
+.resource-form input,
+.resource-form select,
+.resource-form textarea {
+  width: 100%;
+  border: 1px solid var(--color-line);
+  border-radius: 0.75rem;
+  background: var(--color-card);
+  padding: 0.65rem 0.75rem;
+  color: var(--color-ink);
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+.resource-form select {
+  appearance: none;
+  cursor: pointer;
+  padding-right: 2.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234a5875' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-position: right 0.75rem center;
+  background-repeat: no-repeat;
+  background-size: 1rem;
+}
+
+.resource-form select:hover {
+  border-color: var(--color-brand);
+}
+
+.resource-form input:focus,
+.resource-form select:focus,
+.resource-form textarea:focus {
+  border-color: var(--color-brand);
+  outline: 2px solid color-mix(in srgb, var(--color-brand) 20%, transparent);
+  outline-offset: 0;
+}
+
 :focus-visible {
   outline: 2px solid var(--color-brand);
   outline-offset: 2px;

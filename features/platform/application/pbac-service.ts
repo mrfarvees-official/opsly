@@ -52,6 +52,9 @@ async function parsePolicy(
   const actions = new Set(
     (await sql<{ key: string }[]>`select key from action`).map((a) => a.key),
   );
+  const roles = new Set(
+    (await sql<{ key: string }[]>`select key from workspace_role`).map((r) => r.key),
+  );
 
   const subjects = list(body.subjects, "Subjects").map((raw): PolicySubject => {
     const s = asObject(raw, "Subject");
@@ -60,6 +63,7 @@ async function parsePolicy(
     if (kind === "role") {
       const v = text(s.value, "Role", { max: 40 });
       if (!ROLE_KEY.test(v)) throw badRequest("Role is invalid.");
+      if (!roles.has(v)) throw badRequest(`Unknown role: ${v}.`);
       return { kind, value: v };
     }
     return {

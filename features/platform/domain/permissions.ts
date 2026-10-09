@@ -19,6 +19,7 @@ export const isLogged = (action: string) => !UNLOGGED_ACTIONS.has(action);
 export const SYSTEM_RESOURCES = [
   { key: "team", name: "Teams" },
   { key: "user", name: "Users" },
+  { key: "role", name: "Roles" },
   { key: "setting", name: "Settings" },
   { key: "audit", name: "Audit log" },
   { key: "resource", name: "Resources" },

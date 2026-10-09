@@ -21,11 +21,11 @@ export function AuthShell({
           <div className="mt-8">{children}</div>
         </div>
       </div>
-      <aside className="hidden flex-col justify-end bg-ink p-14 text-white lg:flex">
+      <aside className="hidden flex-col justify-end border-l border-line bg-brand-tint p-14 text-ink lg:flex">
         <p className="max-w-md font-display text-3xl font-semibold leading-snug">
           “We stopped chasing approvals in chat. Now they just get done.”
         </p>
-        <p className="mt-4 text-sm text-white/60">
+        <p className="mt-4 text-sm text-ink-soft">
           Sample testimonial, replace with a real customer quote.
         </p>
       </aside>
