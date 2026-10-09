@@ -31,6 +31,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (body.password.length < 12) {
+      return NextResponse.json(
+        { error: "Use at least 12 characters for your password." },
+        { status: 400 },
+      );
+    }
+
     const result = await provisioningService.createTenantOwner({
       tenantName: body.tenantName,
 
@@ -57,6 +64,16 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error("Tenant owner registration failed:", error);
+
+    const cause = (error as { cause?: { code?: string } }).cause;
+
+    // PostgreSQL unique_violation: tenant slug or owner email already used.
+    if (cause?.code === "23505") {
+      return NextResponse.json(
+        { error: "That workspace address is already taken. Try another." },
+        { status: 409 },
+      );
+    }
 
     return NextResponse.json(
       {
