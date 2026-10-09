@@ -1,10 +1,9 @@
 import "server-only";
-
+import { createHash } from "node:crypto";
 import type { Sql, TransactionSql } from "postgres";
-
 import { tenantDatabaseManager } from "@/features/database/server/tenant-database-manager";
-
 import { ACTIONS, SYSTEM_RESOURCES, isLogged } from "../domain/permissions";
+import { MIGRATIONS } from "./tenant-migrations";
 
 const DDL = `
 create table if not exists resource (
@@ -120,22 +119,68 @@ drop trigger if exists audit_log_no_change on audit_log;
 create trigger audit_log_no_change
   before update or delete on audit_log
   for each row execute function audit_log_immutable();
+
+create table if not exists meta (
+  key text primary key,
+  value text not null,
+  updated_at timestamptz not null default now()
+);
 `;
 
 type SqlExecutor = Sql | TransactionSql;
+
+const SYSTEM_POLICIES = [
+  {
+    name: "Admins manage everything",
+    effect: "allow",
+    subjects: [{ kind: "role", value: "admin" }],
+    targets: [{ resource: "*", action: "*" }],
+  },
+  {
+    name: "Members can view",
+    effect: "allow",
+    subjects: [{ kind: "role", value: "member" }],
+    targets: [
+      { resource: "*", action: "view" },
+      { resource: "*", action: "viewAny" },
+    ],
+  },
+  {
+    name: "Members can't see audit, policies or backups",
+    effect: "deny",
+    subjects: [{ kind: "role", value: "member" }],
+    targets: [
+      { resource: "audit", action: "*" },
+      { resource: "pbac", action: "*" },
+      { resource: "backup", action: "*" },
+    ],
+  },
+] as const;
+
+const SCHEMA_HASH = createHash("sha256")
+  .update(
+    JSON.stringify([
+      DDL,
+      MIGRATIONS,
+      ACTIONS,
+      SYSTEM_RESOURCES,
+      SYSTEM_POLICIES,
+    ]),
+  )
+  .digest("hex");
 
 const g = globalThis as unknown as {
   opslyTenantReady?: Map<string, Promise<void>>;
 };
 const ready = (g.opslyTenantReady ??= new Map());
 
-/** Tenant connection with the business tables guaranteed to exist. */
+/** Tenant connection with the schema and seeds guaranteed current. */
 export async function getTenantSql(tenantId: string): Promise<Sql> {
   const { client } = await tenantDatabaseManager.get(tenantId);
 
   let pending = ready.get(tenantId);
   if (!pending) {
-    pending = bootstrap(client).catch((error) => {
+    pending = initializeTenantSchema(client).catch((error) => {
       ready.delete(tenantId);
       throw error;
     });
@@ -146,13 +191,35 @@ export async function getTenantSql(tenantId: string): Promise<Sql> {
   return client;
 }
 
-async function bootstrap(client: Sql) {
-  await client.begin(async (tx) => {
-    await tx`select pg_advisory_xact_lock(727301)`;
-    await tx.unsafe(DDL);
-    await seedCatalog(tx);
-    await seedDefaultPolicies(tx);
-  });
+async function hasCurrentSchemaHash(sql: SqlExecutor): Promise<boolean> {
+  const [meta] = await sql<{ table_name: string | null }[]>`
+    select to_regclass('public.meta')::text as table_name`;
+  if (!meta?.table_name) return false;
+
+  const [row] = await sql<{ value: string }[]>`
+    select value from meta where key = 'schema_hash'`;
+  return row?.value === SCHEMA_HASH;
+}
+
+export async function applyMigrations(tx: TransactionSql): Promise<void> {
+  await tx`
+    create table if not exists schema_migration (
+      id integer primary key,
+      name text not null,
+      applied_at timestamptz not null default now()
+    )`;
+
+  const applied = await tx<{ id: number }[]>`
+    select id from schema_migration`;
+  const appliedIds = new Set(applied.map((migration) => migration.id));
+
+  for (const migration of [...MIGRATIONS].sort((a, b) => a.id - b.id)) {
+    if (appliedIds.has(migration.id)) continue;
+    await tx.unsafe(migration.sql);
+    await tx`
+      insert into schema_migration (id, name)
+      values (${migration.id}, ${migration.name})`;
+  }
 }
 
 /** Idempotent: system actions and resources. Safe to call again after a restore. */
@@ -184,8 +251,8 @@ async function seedPolicy(
   sql: SqlExecutor,
   name: string,
   effect: "allow" | "deny",
-  subjects: SeedSubject[],
-  targets: SeedTarget[],
+  subjects: readonly SeedSubject[],
+  targets: readonly SeedTarget[],
 ) {
   const [row] = await sql<{ id: string }[]>`
     insert into pbac (name, effect) values (${name}, ${effect}) returning id`;
@@ -203,25 +270,42 @@ async function seedDefaultPolicies(sql: SqlExecutor) {
   >`select count(*)::int as n from pbac`;
   if (n > 0) return;
 
-  const admin = [{ kind: "role", value: "admin" }];
-  const member = [{ kind: "role", value: "member" }];
+  for (const policy of SYSTEM_POLICIES) {
+    await seedPolicy(
+      sql,
+      policy.name,
+      policy.effect,
+      policy.subjects,
+      policy.targets,
+    );
+  }
+}
 
-  await seedPolicy(sql, "Admins manage everything", "allow", admin, [
-    { resource: "*", action: "*" },
-  ]);
-  await seedPolicy(sql, "Members can view", "allow", member, [
-    { resource: "*", action: "view" },
-    { resource: "*", action: "viewAny" },
-  ]);
-  await seedPolicy(
-    sql,
-    "Members can't see audit, policies or backups",
-    "deny",
-    member,
-    [
-      { resource: "audit", action: "*" },
-      { resource: "pbac", action: "*" },
-      { resource: "backup", action: "*" },
-    ],
-  );
+async function seedSystemPolicies(sql: SqlExecutor) {
+  await seedDefaultPolicies(sql);
+}
+
+/**
+ * Creates the business tables in one tenant database, then seeds the
+ * permission catalog and PBAC policies. The bootstrap transaction is guarded
+ * by a process-local promise and a database advisory lock.
+ */
+export async function initializeTenantSchema(client: Sql): Promise<void> {
+  if (await hasCurrentSchemaHash(client)) return;
+
+  await client.begin(async (tx) => {
+    await tx`select pg_advisory_xact_lock(727301)`;
+    if (await hasCurrentSchemaHash(tx)) return;
+
+    await tx.unsafe(DDL);
+    await applyMigrations(tx);
+    await seedCatalog(tx);
+    await seedSystemPolicies(tx);
+    await seedDefaultPolicies(tx);
+    await tx`
+      insert into meta (key, value, updated_at)
+      values ('schema_hash', ${SCHEMA_HASH}, now())
+      on conflict (key) do update
+        set value = excluded.value, updated_at = excluded.updated_at`;
+  });
 }

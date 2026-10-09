@@ -21,7 +21,13 @@ vi.mock(
 );
 
 vi.mock("@/features/database/server/tenant-database-manager", () => ({
-  tenantDatabaseManager: { register: vi.fn(async () => undefined) },
+  tenantDatabaseManager: {
+    register: vi.fn(async () => ({ client: {} })),
+  },
+}));
+
+vi.mock("@/features/platform/infrastructure/tenant-sql", () => ({
+  initializeTenantSchema: vi.fn(async () => undefined),
 }));
 
 // Default repository/creator are replaced by injected fakes; stub the modules
@@ -141,6 +147,38 @@ describe("TenantOwnerProvisioningService", () => {
       }),
     ).rejects.toThrow("CREATE DATABASE failed");
 
+    expect(repository.markDatabaseFailed).toHaveBeenCalledWith("database-1");
+  });
+
+  it("marks the database failed when schema initialization fails", async () => {
+    const repository = {
+      createProvisioningRecords: vi.fn(async () => ({
+        tenant: { id: "tenant-1" },
+        owner: { id: "owner-1" },
+        database: { id: "database-1" },
+      })),
+      markDatabaseActive: vi.fn(async () => undefined),
+      markDatabaseFailed: vi.fn(async () => undefined),
+    };
+
+    const service = new TenantOwnerProvisioningService(
+      repository as never,
+      { createDatabase: vi.fn(async () => undefined) },
+      vi.fn(async () => {
+        throw new Error("schema failed");
+      }),
+    );
+
+    await expect(
+      service.createTenantOwner({
+        tenantName: "Acme",
+        tenantSlug: "acme",
+        ownerEmail: "owner@acme.test",
+        ownerPassword: "very-secure-password",
+      }),
+    ).rejects.toThrow("schema failed");
+
+    expect(repository.markDatabaseActive).not.toHaveBeenCalled();
     expect(repository.markDatabaseFailed).toHaveBeenCalledWith("database-1");
   });
 });

@@ -7,9 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run",
+    "test": "vitest run --config vitest.config.mts",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "db:push": "node --env-file-if-exists=.env node_modules/drizzle-kit/bin.cjs push"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.4",
