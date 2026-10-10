@@ -37,6 +37,105 @@ body {
   font-weight: 400;
 }
 
+.resource-form label,
+.business-designer label {
+  display: flex !important;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.business-designer input,
+.business-designer select,
+.business-designer textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  margin: 0;
+  border: 1px solid var(--color-line) !important;
+  border-radius: 0.75rem !important;
+  background-color: var(--color-card) !important;
+  padding: 0.65rem 0.75rem;
+  color: var(--color-ink);
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.25rem;
+  min-height: 2.75rem;
+}
+
+.business-designer textarea {
+  resize: vertical;
+}
+
+.business-designer select {
+  appearance: none;
+  cursor: pointer;
+  padding-right: 2.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234a5875' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-position: right 0.75rem center;
+  background-repeat: no-repeat;
+  background-size: 1rem;
+}
+
+.business-designer input:focus,
+.business-designer select:focus,
+.business-designer textarea:focus {
+  border-color: var(--color-brand) !important;
+  outline: 2px solid color-mix(in srgb, var(--color-brand) 20%, transparent);
+  outline-offset: 0;
+}
+
+.business-search {
+  min-width: 16rem;
+  border: 1px solid var(--color-line);
+  border-radius: 0.75rem;
+  background: var(--color-card);
+  padding: 0.65rem 0.75rem;
+  color: var(--color-ink);
+}
+
+.business-record-form input,
+.business-record-form select,
+.business-record-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 0.5rem;
+  border: 1px solid var(--color-line);
+  border-radius: 0.75rem;
+  background: var(--color-card);
+  padding: 0.7rem 0.8rem;
+  color: var(--color-ink);
+  font-size: 0.875rem;
+}
+
+.business-record-form input:focus,
+.business-record-form select:focus,
+.business-record-form textarea:focus {
+  border-color: var(--color-brand);
+  outline: 2px solid color-mix(in srgb, var(--color-brand) 20%, transparent);
+  outline-offset: 0;
+}
+
+.fixed form.mt-6 input,
+.fixed form.mt-6 select,
+.fixed form.mt-6 textarea {
+  display: block !important;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 0.5rem;
+  min-height: 2.75rem;
+  border: 1px solid var(--color-line) !important;
+  border-radius: 0.75rem !important;
+  background: var(--color-card) !important;
+  padding: 0.7rem 0.8rem;
+  color: var(--color-ink);
+}
+
+.fixed form.mt-6 label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
 .resource-form select {
   appearance: none;
   cursor: pointer;

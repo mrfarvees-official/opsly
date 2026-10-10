@@ -1,0 +1,9 @@
+import { BusinessDesigner } from "@/components/business-designer";
+import { listBusinessDefinitions } from "@/features/platform/application/business-designer-service";
+
+export const instant = false;
+
+export default async function BusinessDesignerPage() {
+  const definitions = await listBusinessDefinitions();
+  return <main className="p-6 sm:p-10"><header className="max-w-3xl"><p className="text-xs font-bold uppercase tracking-[0.18em] text-brand">Business designer</p><h1 className="mt-2 font-display text-4xl font-bold tracking-tight">Turn an idea into an operating system.</h1><p className="mt-3 text-ink-soft">Model the tables your business needs, then let Opsly provision the data layer, navigation resources and policy boundary together.</p></header><BusinessDesigner /><section className="mt-8 rounded-2xl border border-line bg-card p-6"><div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-brand">Published definitions</p><h2 className="mt-1 font-display text-2xl font-bold">Your business systems</h2></div><span className="text-sm text-ink-soft">{definitions.length} total</span></div>{definitions.length === 0 ? <p className="mt-5 text-sm text-ink-soft">No definitions yet. Start with the smallest useful business workflow above.</p> : <div className="mt-5 grid gap-3 md:grid-cols-2">{definitions.map((definition) => <div key={definition.id} className="rounded-xl border border-line p-4"><div className="flex justify-between gap-3"><h3 className="font-semibold">{definition.name}</h3><span className="rounded-full bg-ok-tint px-2 py-1 text-xs font-bold text-ok">{definition.status}</span></div><p className="mt-1 text-sm text-ink-soft">{definition.table_count} physical tables · v{definition.version}</p></div>)}</div>}</section></main>;
+}

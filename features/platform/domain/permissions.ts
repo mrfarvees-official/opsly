@@ -26,6 +26,8 @@ export const SYSTEM_RESOURCES = [
   { key: "action", name: "Actions" },
   { key: "pbac", name: "Access policies" },
   { key: "backup", name: "Backups" },
+  { key: "business", name: "Business designer" },
+  { key: "business_definition", name: "Business definitions" },
 ] as const;
 
 export const TRANSFER_ENTITIES = ["team", "user", "resource", "pbac", "audit"] as const;

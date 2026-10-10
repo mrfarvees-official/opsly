@@ -72,6 +72,14 @@ const TABLES: { name: string; columns: string[]; json?: string[] }[] = [
     columns: ["key", "value", "updated_by", "updated_at"],
     json: ["value"],
   },
+  { name: "business_definition", columns: ["id", "key", "name", "description", "status", "version", "created_by", "created_at", "updated_at"] },
+  { name: "business_table", columns: ["id", "business_id", "resource_key", "key", "name", "physical_table", "kind", "definition", "position", "created_at", "updated_at"], json: ["definition"] },
+  { name: "business_relation", columns: ["id", "business_id", "from_table_id", "to_table_id", "from_field", "to_field", "relation_type", "created_at"] },
+  { name: "business_calculation", columns: ["id", "business_id", "target_table_id", "key", "name", "expression", "dependencies", "created_at"], json: ["dependencies"] },
+  { name: "business_snapshot", columns: ["id", "business_id", "label", "table_name", "row_count", "storage_key", "created_by", "created_at"] },
+  { name: "business_field", columns: ["id", "table_id", "key", "label", "data_type", "input_type", "required", "searchable", "sensitive", "definition", "position", "created_at", "updated_at"], json: ["definition"] },
+  { name: "business_field_reference", columns: ["id", "field_id", "path", "target_resource", "target_field", "display_field", "allow_many", "created_at"] },
+  { name: "business_field_calculation", columns: ["id", "field_id", "path", "operation", "source_resource", "source_field", "match_local_field", "match_source_field", "expression", "refresh_mode", "created_at"], json: ["expression"] },
 ];
 
 const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
@@ -84,6 +92,7 @@ interface Manifest {
   createdAt: string;
   createdBy: string;
   tables: Record<string, Row[]>;
+  physicalTables: Record<string, Row[]>;
 }
 
 function root() {
@@ -105,12 +114,19 @@ async function snapshotToFile(
     ];
   }
 
+  const physicalTables: Record<string, Row[]> = {};
+  const definitions = await sql<{ physical_table: string }[]>`select physical_table from business_table`;
+  for (const table of definitions) {
+    physicalTables[table.physical_table] = [...(await sql<Row[]>`select * from ${sql(table.physical_table)}`)];
+  }
+
   const manifest: Manifest = {
     format: 1,
     tenantId: ctx.tenantId,
     createdAt: new Date().toISOString(),
     createdBy: ctx.userId,
     tables,
+    physicalTables,
   };
   const file = encryptBackup(
     Buffer.from(JSON.stringify(manifest)),
@@ -231,6 +247,7 @@ function parseManifest(plain: Buffer, tenantId: string): Manifest {
       "This backup was made by an unsupported version of Opsly.",
     );
   }
+  if (m.physicalTables !== undefined && (typeof m.physicalTables !== "object" || m.physicalTables === null)) throw badRequest("The backup's physical table data is invalid.");
   if (m.tenantId !== tenantId)
     throw badRequest("This backup belongs to a different workspace.");
   for (const t of TABLES) {
@@ -267,6 +284,9 @@ export async function restoreBackup(input: {
 
       // Safety net: a restorable copy of what we're about to replace.
       const safety = await snapshotToFile(sql, ctx, "pre-restore");
+
+      const oldPhysicalTables = await sql<{ physical_table: string }[]>`select physical_table from business_table`;
+      for (const table of oldPhysicalTables) await sql.unsafe(`drop table if exists "${table.physical_table}"`);
 
       // Members whose accounts no longer exist are dropped.
       const memberIds = [
@@ -306,6 +326,18 @@ export async function restoreBackup(input: {
       }
 
       await seedCatalog(sql);
+
+      const restoredPhysicalTables = manifest.physicalTables ?? {};
+      const definitions = await sql<{ physical_table: string; definition: { fields?: { key: string; type?: string; required?: boolean }[] } }[]>`select physical_table, definition from business_table`;
+      const typeMap: Record<string, string> = { text: "text", number: "numeric", boolean: "boolean", date: "date", datetime: "timestamptz", uuid: "uuid", json: "jsonb" };
+      for (const table of definitions) {
+        const fields = (table.definition?.fields ?? []).map((field) => `"${field.key}" ${typeMap[field.type ?? "text"] ?? "text"}${field.required ? " not null" : ""}`).join(", ");
+        await sql.unsafe(`create table if not exists "${table.physical_table}" ("id" uuid primary key default gen_random_uuid(), ${fields ? `${fields}, ` : ""}"created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now())`);
+        for (const row of restoredPhysicalTables[table.physical_table] ?? []) {
+          const columns = Object.keys(row).filter((column) => /^[a-z][a-z0-9_]*$/.test(column));
+          if (columns.length) await sql`insert into ${sql(table.physical_table)} ${sql(row, ...columns)}`;
+        }
+      }
 
       note({
         details: {
